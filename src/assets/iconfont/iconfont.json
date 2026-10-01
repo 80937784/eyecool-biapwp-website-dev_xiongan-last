@@ -1,0 +1,191 @@
+{
+  "id": "2598250",
+  "name": "多模态智慧管理云平台",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon-",
+  "description": "多模态智慧管理云平台",
+  "glyphs": [
+    {
+      "icon_id": "22399546",
+      "name": "指静脉",
+      "font_class": "zhijingmai",
+      "unicode": "e61e",
+      "unicode_decimal": 58910
+    },
+    {
+      "icon_id": "22399547",
+      "name": "人脸识别",
+      "font_class": "renlianshibie",
+      "unicode": "e61f",
+      "unicode_decimal": 58911
+    },
+    {
+      "icon_id": "22399548",
+      "name": "指静脉1",
+      "font_class": "zhijingmai1",
+      "unicode": "e620",
+      "unicode_decimal": 58912
+    },
+    {
+      "icon_id": "22399549",
+      "name": "指纹1",
+      "font_class": "zhiwen1",
+      "unicode": "e621",
+      "unicode_decimal": 58913
+    },
+    {
+      "icon_id": "22399550",
+      "name": "虹膜",
+      "font_class": "hongmo",
+      "unicode": "e622",
+      "unicode_decimal": 58914
+    },
+    {
+      "icon_id": "22399551",
+      "name": "多模态",
+      "font_class": "duomotai",
+      "unicode": "e623",
+      "unicode_decimal": 58915
+    },
+    {
+      "icon_id": "22399552",
+      "name": "多模态1",
+      "font_class": "duomotai1",
+      "unicode": "e624",
+      "unicode_decimal": 58916
+    },
+    {
+      "icon_id": "22399553",
+      "name": "人脸1",
+      "font_class": "renlian1",
+      "unicode": "e625",
+      "unicode_decimal": 58917
+    },
+    {
+      "icon_id": "22399554",
+      "name": "指纹",
+      "font_class": "zhiwen",
+      "unicode": "e626",
+      "unicode_decimal": 58918
+    },
+    {
+      "icon_id": "22399555",
+      "name": "虹膜1",
+      "font_class": "hongmo1",
+      "unicode": "e627",
+      "unicode_decimal": 58919
+    },
+    {
+      "icon_id": "22366475",
+      "name": "场景接入",
+      "font_class": "changjingjieru",
+      "unicode": "e60e",
+      "unicode_decimal": 58894
+    },
+    {
+      "icon_id": "22366476",
+      "name": "大屏管理",
+      "font_class": "dapingguanli",
+      "unicode": "e60f",
+      "unicode_decimal": 58895
+    },
+    {
+      "icon_id": "22366477",
+      "name": "统计分析",
+      "font_class": "tongjifenxi",
+      "unicode": "e610",
+      "unicode_decimal": 58896
+    },
+    {
+      "icon_id": "22366478",
+      "name": "日志管理",
+      "font_class": "rizhiguanli",
+      "unicode": "e611",
+      "unicode_decimal": 58897
+    },
+    {
+      "icon_id": "22366479",
+      "name": "设备管理",
+      "font_class": "shebeiguanli",
+      "unicode": "e612",
+      "unicode_decimal": 58898
+    },
+    {
+      "icon_id": "22366480",
+      "name": "区域管理",
+      "font_class": "quyuguanli",
+      "unicode": "e613",
+      "unicode_decimal": 58899
+    },
+    {
+      "icon_id": "22366482",
+      "name": "基础管理",
+      "font_class": "jichuguanli",
+      "unicode": "e614",
+      "unicode_decimal": 58900
+    },
+    {
+      "icon_id": "22366483",
+      "name": "系统监控",
+      "font_class": "xitongjiankong",
+      "unicode": "e615",
+      "unicode_decimal": 58901
+    },
+    {
+      "icon_id": "22366484",
+      "name": "系统管理",
+      "font_class": "xitongguanli",
+      "unicode": "e616",
+      "unicode_decimal": 58902
+    },
+    {
+      "icon_id": "22366485",
+      "name": "系统工具",
+      "font_class": "xitonggongju",
+      "unicode": "e617",
+      "unicode_decimal": 58903
+    },
+    {
+      "icon_id": "22366486",
+      "name": "消息管理",
+      "font_class": "xiaoxiguanli",
+      "unicode": "e618",
+      "unicode_decimal": 58904
+    },
+    {
+      "icon_id": "22366487",
+      "name": "系统配置",
+      "font_class": "xitongpeizhi",
+      "unicode": "e619",
+      "unicode_decimal": 58905
+    },
+    {
+      "icon_id": "22366488",
+      "name": "应用系统",
+      "font_class": "yingyongxitong",
+      "unicode": "e61a",
+      "unicode_decimal": 58906
+    },
+    {
+      "icon_id": "22366489",
+      "name": "预警管理",
+      "font_class": "yujingguanli",
+      "unicode": "e61b",
+      "unicode_decimal": 58907
+    },
+    {
+      "icon_id": "22366490",
+      "name": "主页",
+      "font_class": "zhuye",
+      "unicode": "e61c",
+      "unicode_decimal": 58908
+    },
+    {
+      "icon_id": "22366491",
+      "name": "租户管理",
+      "font_class": "zuhuguanli",
+      "unicode": "e61d",
+      "unicode_decimal": 58909
+    }
+  ]
+}

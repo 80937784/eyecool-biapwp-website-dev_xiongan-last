@@ -1,0 +1,25 @@
+@import './variables.scss';
+.sidebar-container {
+    .submenu-title-noDropdown,
+    .el-submenu__title {
+        &:hover {
+            background-color: $menuHover !important;
+            color: $menuHoverText !important;
+            .svg-icon {
+                filter:drop-shadow($subMenuActiveText 80px 0);
+                transform: translateX(-80px);
+            }
+        }
+    }
+    .is-active>.el-submenu__title {
+        color: $subMenuActiveText !important;
+        .svg-icon {
+            filter:drop-shadow($subMenuActiveText 80px 0);
+            transform: translateX(-80px);
+        }
+    }
+    .is-active>.svg-icon {
+        filter: drop-shadow($subMenuActiveText 80px 0);
+        transform: translateX(-80px);
+    }
+}

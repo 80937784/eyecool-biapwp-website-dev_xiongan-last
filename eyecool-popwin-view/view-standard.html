@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
+    <meta http-equiv="expires" content="Wed, 26 Feb 1997 08:21:57 GMT" />
+    <title></title>
+    <link rel="stylesheet" type="text/css" href="./static/css/view-standard-style.css" />
+    <script type="text/javascript" src="./static/js/jquery.min.js"></script>
+    <script type="text/javascript" src="./static/js/sockjs.min.js"></script>
+    <script type="text/javascript" src="./static/js/stomp.min.js"></script>
+    <script type="text/javascript" src="./static/js/qwebchannel.js"></script>
+    <script type="text/javascript" src="./static/js/vip-params.js"></script>
+    <script type="text/javascript" src="./static/js/vip-extends.js"></script>
+</head>
+
+<body>
+    <audio src="./static/img/welcome.mp3" id="audioHint">
+      您的浏览器不支持 audio
+    </audio>
+    <audio src="./static/img/alarm.mp3" id="audioStranger">
+      您的浏览器不支持 audio
+    </audio>
+    <div class="header-nav">
+        <div class="date-time"></div>
+        <div class="header-nav-title">动态人脸识别系统</div>
+        <img src="./static/img/view-LOGO.png" class="logo" alt="logo" />
+        <img src="./static/img/ic-header-nav.png" id="nav-title" alt="nav" />
+    </div>
+    <div class="dialog-wrapper" id="loginDialog" style="display: none;">
+        <div class="loginModel form_box" style="display:block;text-align:center;z-index:2000;">
+            <div style="padding-top: 10%;">
+                <div class="title" style="padding: 20px;padding-bottom: 15%;">
+                    多模态智慧管理云平台
+                </div>
+                <div class="form">
+                    <form>
+                        <div>
+                            <div style="padding-bottom:15%;position: relative">
+                                <div>
+                                    <div style="float:left;width: 30%;">
+                                        <label style="float:right;padding-top:6%;padding-right:10%;">登录名</label>
+                                    </div>
+                                    <input style="width: 60%;float:left;" id="loginName" type="text" />
+                                </div>
+                            </div>
+                            <div style="padding-bottom:15%;position: relative;">
+                                <div style="width: 30%;float:left;">
+                                    <label style="float:right;padding-top:6%;padding-right:10%;">密码</label>
+                                </div>
+                                <input style="width: 60%;float:left;" id="password" type="password" />
+                            </div>
+                            <div id="alert" style="color: red;display: none;padding-bottom:2%;">
+                                用户名或密码错误
+                            </div>
+                            <div style="margin-bottom:20px;">
+                                <button type="button" onclick="handleShowLogin()">登录</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="model" tabindex="0" style="z-index:1999;"></div>
+    </div>
+    <div class="container">
+        <div class="video-box">
+            <img src="./static/img/mask.png" id="mask" />
+            <!-- 蒙版 -->
+            <div id="video1"></div>
+        </div>
+
+        <!-- 弹框-->
+        <div class="modal" style="display: none" id="rectBox"></div>
+        <div class="user-box">
+            <ul id="hitresult"></ul>
+        </div>
+        <div class="clearfix"></div>
+    </div>
+
+    <div class="footer">
+        <div class="footer-title">人脸识别技术由北京眼神科技提供</div>
+        <div class="menu-box">
+            <img src="./static/img/user_group.png" alt="用户登出" style="width: inherit;" onclick="handleShowLogout()">用户登出</i>
+        </div>
+        <div class="menu-box">
+            <div class="menu-list">
+                <ul id="device-list"></ul>
+            </div>
+            <img src="./static/img/ic-btn-menu.png" class="menu-btn" alt="摄像机列表" />
+        </div>
+
+        <img src="./static/img/ic-bottom-title.png" style="text-align: center" class="bot-title" alt="人脸识别技术由北京眼神科技提供" />
+    </div>
+</body>
+<script type="text/javascript">
+    var modal_box_img = "./static/img/model-box.png";
+    var ic_userimg_mask = "./static/img/ic-userimg-mask.png";
+    var ic_strangerimg_mask = "./static/img/ic-strangerimg-mask.png";
+    var modal_box_img_stranger = "./static/img/model-box-stranger.png";
+    var strangerPush = true;
+    var hitPush = true;
+    var hitShowTmpl = false;
+    var stompClient = null;
+    var RTSP_URL = "";
+    //    缓存当前播放的视频地址，用于控制显示
+    var currentDeviceNo = null;
+    var videoBoxWidth = 0;
+    var updateVideo = function(divName, htmlContent) {
+        var imgarea = document.getElementById(divName);
+        imgarea.innerHTML = htmlContent;
+    };
+    var token = null;
+    getTitle();
+
+    function getTitle() {
+        $.ajax({
+            url: './config.json',
+            method: "GET",
+            success: function(res) {
+                console.log(res)
+            },
+            error: function(response) {}
+        });
+    }
+
+    function playAudio() {
+        var audioDom = document.getElementById("audioHint");
+        /**currentTime：当前音频/视频的播放位置（以秒计）
+         * duration：当前音频/视频的长度（以秒计)*/
+        var currentTime = audioDom.currentTime;
+        var duration = audioDom.duration;
+        /**如果当前音视频未开始播放，或者播放结束，则让它播放*/
+        if (currentTime <= 0 || currentTime == duration) {
+            /**播放音视频*/
+            audioDom.play();
+        }
+    }
+
+    function playAudioStranger() {
+        var audioDom = document.getElementById("audioStranger");
+        /**currentTime：当前音频/视频的播放位置（以秒计）
+         * duration：当前音频/视频的长度（以秒计)*/
+        var currentTime = audioDom.currentTime;
+        var duration = audioDom.duration;
+        /**如果当前音视频未开始播放，或者播放结束，则让它播放*/
+        if (currentTime <= 0 || currentTime == duration) {
+            /**播放音视频*/
+            audioDom.play();
+        }
+    }
+
+    function createVideoView() {
+        new QWebChannel(qt.webChannelTransport, function(channel) {
+            window.appObj = channel.objects.appObj;
+            appObj.updateVideo.connect(updateVideo);
+            videoBoxWidth = $("#mask").width() - 1;
+            var videoW = videoBoxWidth;
+            var videoH = (videoBoxWidth / 16) * 9;
+            appObj.setFps(fps);
+            appObj.createVideoView("video1", RTSP_URL, videoW, videoH);
+        });
+    }
+
+    window.onload = function() {
+        var showToken = sessionStorage.getItem("showToken");
+        token = showToken;
+        if (showToken) {
+            $("#loginDialog").css("display", "none");
+            listDevices();
+            openSocket();
+        } else {
+            $("#loginDialog").css("display", "block");
+        }
+    };
+
+    function queryRecogniseRecord(deviceNo) {
+        $("#hitresult").html("");
+        $.ajax({
+            url: location.protocol + '//' +
+                SERVER_IP +
+                ":" +
+                SERVER_PORT +
+                "/api/show/listresult?token=" +
+                urlEncode(token),
+            type: "GET",
+            contentType: "application/x-www-form-urlencoded",
+            data: {
+                deviceNo: deviceNo,
+                showTmpl: hitShowTmpl
+            },
+            dataType: "json",
+            success: function(resMsg) {
+                if (resMsg.code == 500) {
+                    sessionStorage.removeItem("showToken");
+                    location.reload();
+                }
+                resMsg = JSON.parse(resMsg.msg);
+                if (resMsg != null) {
+                    for (var i = resMsg.recogLogList.length - 1; i >= 0; i--) {
+                        var personName = resMsg.recogLogList[i].personName ?
+                            resMsg.recogLogList[i].personName :(resMsg.recogLogList[i].uniqueId ?resMsg.recogLogList[i].uniqueId :"陌生人");                          
+                        var receivedTime = resMsg.recogLogList[i].receivedTime;
+                        var matchTime = new Date(receivedTime).Format(
+                            "yyyy-MM-dd HH:mm:ss"
+                        );
+                        var sceneImage;
+                        if (hitShowTmpl) {
+                            sceneImage =
+                                "data:image/jpeg;base64," + resMsg.recogLogList[i].stockImage;
+                        } else {
+                            sceneImage =
+                                "data:image/jpeg;base64," + resMsg.recogLogList[i].sceneImage;
+                        }
+                        var html =
+                            "<li><img src='" + (personName == '陌生人' ? ic_strangerimg_mask : ic_userimg_mask) +
+                            "' class='userimg-mask'>" +
+                            "<img class='user-img' style='display: block'  src='" +
+                            sceneImage +
+                            "'/>" +
+                            "<p>" +
+                            "<span class='username'>" +
+                            personName +
+                            "</span>" +
+                            "<time>" +
+                            matchTime +
+                            "</time>" +
+                            "</p>" +
+                            "</li>";
+                        $("#hitresult").prepend(html);
+                        if ($("#hitresult li").length > 6) {
+                            $("#hitresult li:last").remove();
+                        }
+                    }
+                }
+            },
+            error: function(response) {}
+        });
+    }
+
+    function listDevices() {
+        $.ajax({
+            url: location.protocol + '//' +
+                SERVER_IP +
+                ":" +
+                SERVER_PORT +
+                "/api/show/listdevice?token=" +
+                urlEncode(token),
+            type: "GET",
+            contentType: "application/x-www-form-urlencoded",
+            dataType: "json",
+            success: function(resMsg) {
+                if (resMsg.code == 500) {
+                    sessionStorage.removeItem("showToken");
+                    location.reload();
+                }
+                resMsg = JSON.parse(resMsg.msg);
+                $("#device-list").html("");
+                for (var i = 0; i < resMsg.length; i++) {
+                    var deviceNo = resMsg[i].deviceNo;
+                    var deviceIp = resMsg[i].deviceIp;
+                    var deviceName = resMsg[i].deviceName;
+                    var rtspUrl = JSON.parse(resMsg[i].extInfo).rtspUrl;
+                    var deviceInfoHtml =
+                        "<a href='#' onClick=switchDevice(this,'" +
+                        deviceIp +
+                        "','" +
+                        deviceNo +
+                        "','" +
+                        rtspUrl +
+                        "') ><li>" +
+                        deviceName +
+                        "</li></a>";
+                    $("#device-list").prepend(deviceInfoHtml);
+                }
+            },
+            error: function(response) {}
+        });
+    }
+
+    function handleShowLogin() {
+        $.ajax({
+            url: location.protocol + '//' + SERVER_IP + ":" + SERVER_PORT + "/api/show/login",
+            type: "POST",
+            contentType: "application/json; charset=UTF-8",
+            data: JSON.stringify({
+                username: $("#loginName").val(),
+                password: $("#password").val()
+            }),
+            success: function(resMsg) {
+                if (resMsg.code == 200) {
+                    sessionStorage.setItem("showToken", resMsg.token);
+                    location.reload();
+                } else {
+                    $("#alert").css("display", "block");
+                }
+            },
+            error: function(err) {
+                console.log(err);
+            }
+        });
+    }
+
+    function handleShowLogout() {
+        sessionStorage.removeItem("showToken");
+        location.reload();
+    }
+
+    function switchDevice(obj, deviceIp, deviceNo, rtspUrl) {
+        $("#activeFont").attr("id", "");
+        $(obj)
+            .find("li")
+            .attr("id", "activeFont");
+        var videoW = videoBoxWidth;
+        var videoH = (videoBoxWidth / 16) * 9;
+        $(".user-box").height(videoH);
+        RTSP_URL = rtspUrl;
+        currentDeviceNo = deviceNo;
+        setTimeout(createVideoView, 100);
+        queryRecogniseRecord(deviceNo);
+    }
+
+    function constructStomp(socket) {
+        stompClient = Stomp.over(socket);
+        stompClient.connect({
+                token: "kl"
+            },
+            function(frame) {
+                stompClient.subscribe(
+                    "/topic/pullhitresult/" + token,
+                    function(event) {
+                        var content = JSON.parse(event.body);
+                        var personFlag = content.personFlag;
+                        var imageBase64 = content.imageBase64;
+                        var matchTime = content.matchTime;
+                        var deviceNo = content.deviceNo;
+                        var personName = content.personName;
+                        var personCode = content.personCode;
+                        var imageUrl = content.imageUrl;
+                        if (deviceNo == currentDeviceNo && hitPush) {
+                            var html =
+                                "<li><img  src='" +
+                                ic_userimg_mask +
+                                "' class='userimg-mask'>" +
+                                "<img class='user-img' src='data:img/jpeg;base64," +
+                                imageBase64 +
+                                "'/>" +
+                                "<p>" +
+                                "<span class='username'>" +
+                                (personName ? personName : "陌生人") +
+                                "</span>" +
+                                "<time>" +
+                                matchTime +
+                                "</time>" +
+                                "</p>" +
+                                "</li>";
+                            $("#hitresult").prepend(html);
+                            if ($("#hitresult li").length > 6) {
+                                $("#hitresult li:last").remove();
+                            }
+                            if (personFlag == "hit") {
+                                var tanchuangHtml =
+                                    " <div class='model-box'>" +
+                                    "<img width='220' height='220' src='data:img/jpeg;base64," +
+                                    imageBase64 +
+                                    "' width='256' height='256'>" +
+                                    "<p class='username'>" +
+                                    personName +
+                                    "</p>" +
+                                    "<date>" +
+                                    matchTime +
+                                    "</date>" +
+                                    "</div>";
+                                openModal(tanchuangHtml);
+                                if (OPEN_AUDIO) {
+                                    playAudio();
+                                }
+                            }
+                        }
+                    }, {
+                        token: "kltoen"
+                    }
+                );
+                stompClient.subscribe(
+                    "/topic/pullstrangerresult/" + token,
+                    function(event) {
+                        var content = JSON.parse(event.body);
+                        var deviceNo = content.deviceNo;
+                        var imageBase64 = content.imageBase64;
+                        var captureTime = content.matchTime;
+                        if (deviceNo == currentDeviceNo && strangerPush) {
+                            var html =
+                                "<li><img src='" +
+                                ic_strangerimg_mask +
+                                "' class='userimg-mask'>" +
+                                "<img class='user-img' src='data:img/jpeg;base64," +
+                                imageBase64 +
+                                "'/>" +
+                                "<p>" +
+                                "<span class='username'>" +
+                                "陌生人" +
+                                "</span>" +
+                                "<time>" +
+                                captureTime +
+                                "</time>" +
+                                "</p>" +
+                                "</li>";
+                            $("#hitresult").prepend(html);
+                            if ($("#hitresult li").length > 6) {
+                                $("#hitresult li:last").remove();
+                            }
+                            var tanchuangHtml =
+                                " <div class='model-box-stranger'>" +
+                                "<img width='220' height='220' src='data:img/jpeg;base64," +
+                                imageBase64 +
+                                "' width='256' height='256'>" +
+                                "<p class='username'>" +
+                                "陌生人" +
+                                "</p>" +
+                                "<date>" +
+                                captureTime +
+                                "</date>" +
+                                "</div>";
+                            openStrangerModal(tanchuangHtml);
+                            if (OPEN_AUDIO) {
+                                playAudioStranger();
+                            }
+                        }
+                    }, {
+                        token: "kltoen"
+                    }
+                );
+            },
+            function(error) {
+                var socket = new SockJS(
+                    location.protocol + "//" + SERVER_IP + ":" + SERVER_PORT + "/websocket?token=kl",
+                    null, {
+                        transports: ["websocket"],
+                        timeout: 10000
+                    }
+                );
+                // constructStomp(socket);
+            }
+        );
+    }
+
+    function openSocket() {
+        var socket = new SockJS(
+            location.protocol + "//" + SERVER_IP + ":" + SERVER_PORT + "/websocket?token=kl",
+            null, {
+                // 'transports': ['websocket'],
+                timeout: 10000
+            }
+        );
+        constructStomp(socket);
+    }
+    var openModalSetTimeOut = null;
+    var openModal = function(html) {
+        if (openModalSetTimeOut != null) {
+            clearTimeout(openModalSetTimeOut);
+            openModalSetTimeOut = null;
+        }
+        console.log(
+            "openModalSetTimeOut is null >  " + (openModalSetTimeOut == null)
+        );
+        if (html != null && openModalSetTimeOut == null) {
+            var rectBox = $("#rectBox");
+            $("#rectBox").html("");
+            $("#rectBox").prepend(html);
+            $(".modal").css("background-image", "url(" + modal_box_img + ")");
+            $("#rectBox").css("display", "block");
+            openModalSetTimeOut = setTimeout(function() {
+                $("#rectBox ").css("display", "none");
+                openModalSetTimeOut = null;
+            }, 3000);
+        }
+    };
+    var openStrangerModal = function(html) {
+        if (openModalSetTimeOut != null) {
+            clearTimeout(openModalSetTimeOut);
+            openModalSetTimeOut = null;
+        }
+        console.log(
+            "openModalSetTimeOut is null >  " + (openModalSetTimeOut == null)
+        );
+        if (html != null && openModalSetTimeOut == null) {
+            var rectBox = $("#rectBox");
+            $("#rectBox").html("");
+            $("#rectBox").prepend(html);
+            $(".modal").css(
+                "background-image",
+                "url(" + modal_box_img_stranger + ")"
+            );
+            $(".modal img").css({
+                "margin-top": "60px",
+                "margin-left": "15px"
+            });
+            $("#rectBox").css("display", "block");
+            openModalSetTimeOut = setTimeout(function() {
+                $("#rectBox ").css("display", "none");
+                openModalSetTimeOut = null;
+            }, 3000);
+        }
+    };
+
+    function urlEncode(token) {
+        return encodeURIComponent(token)
+            .replace(/!/g, "%21")
+            .replace(/'/g, "%27")
+            .replace(/\(/g, "%28")
+            .replace(/\)/g, "%29")
+            .replace(/\*/g, "%2A")
+            .replace(/%20/g, "+");
+    }
+
+    function closeSocket() {
+        if (stompClient != null) {
+            stompClient.disconnect();
+            stompClient = null;
+        }
+    }
+
+    function time() {
+        var today = new Date();
+        var hou;
+        var time;
+        var day;
+
+        this.hour =
+            today.getHours() < 10 ? "0" + today.getHours() : today.getHours();
+        this.minute =
+            today.getMinutes() < 10 ? "0" + today.getMinutes() : today.getMinutes();
+        this.second =
+            today.getSeconds() < 10 ? "0" + today.getSeconds() : today.getSeconds();
+
+        var d = today.getDay();
+        if (d == 0) {
+            day = "日";
+        } else if (d == 1) {
+            day = "一";
+        } else if (d == 2) {
+            day = "二";
+        } else if (d == 3) {
+            day = "三";
+        } else if (d == 4) {
+            day = "四";
+        } else if (d == 5) {
+            day = "五";
+        } else if (d == 6) {
+            day = "六";
+        }
+
+        $(".date-time").text(
+            today.getFullYear() +
+            "年" +
+            (today.getMonth() + 1) +
+            "月" +
+            today.getDate() +
+            "日" +
+            " 星期" +
+            day +
+            " " +
+            this.hour +
+            ":" +
+            this.minute +
+            ":" +
+            this.second
+        );
+    }
+    setInterval(time, 1000);
+    window.setInterval(listDevices, 10 * 60 * 1000);
+</script>
+<style>
+    .form_box {
+        display: block;
+        text-align: center;
+        margin-top: 6vh !important;
+        margin-top: 15vh;
+        width: 500px;
+        -webkit-transform: none;
+        transform: none;
+        left: 0;
+        bottom: 0;
+        position: relative;
+        margin: 0 auto;
+        margin: 0 auto 50px;
+        background: #fff;
+        border-radius: 10px;
+        -webkit-box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
+        box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
+        -webkit-box-sizing: border-box;
+        box-sizing: border-box;
+        height: 50%;
+        width: 30%;
+    }
+    
+    .form_box input {
+        height: 42px;
+        border: 1px solid #d5d8dc;
+        border-radius: 4px;
+    }
+    
+    .form_box button {
+        width: 20%;
+        height: 46px;
+        background-image: linear-gradient(113deg, #ff9000 0%, #ff6600 100%);
+        border-radius: 4px;
+        text-align: center;
+        font-family: PingFangSC-Medium;
+        font-size: 16px;
+        color: #ffffff;
+        border: none;
+        cursor: pointer;
+        outline: none;
+    }
+    
+    .dialog-wrapper {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        overflow: auto;
+        margin: 0;
+        z-index: 2001;
+    }
+    
+    .title {
+        font-family: PingFangSC-Medium;
+        font-size: 24px;
+        color: #666666;
+        letter-spacing: 0.67px;
+        font-weight: 500;
+        text-align: center;
+    }
+    
+    .model {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.7;
+        background: #000;
+    }
+    
+    .header-nav {
+        position: relative;
+    }
+    
+    .header-nav-title {
+        position: absolute;
+        color: #4cf9ff;
+        font-size: 46px;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        top: 50%;
+    }
+    
+    .footer-title {
+        position: absolute;
+        color: #aac4ff;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1000;
+    }
+</style>
+
+</html>

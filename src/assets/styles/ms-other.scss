@@ -1,0 +1,9 @@
+@import './variables.scss';
+.sidebar-container {
+    .submenu-title-noDropdown,
+    .el-submenu__title {
+        &:hover {
+            background-color: $menuHover !important;  
+        }
+    }
+}

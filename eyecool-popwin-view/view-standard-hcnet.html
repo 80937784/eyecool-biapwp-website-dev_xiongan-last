@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
+    <meta http-equiv="expires" content="Wed, 26 Feb 1997 08:21:57 GMT" />
+    <title></title>
+    <link rel="stylesheet" type="text/css" href="./static/css/view-standard-style-hcnet.css" />
+    <script type="text/javascript" src="./static/js/jquery.min.js"></script>
+    <script type="text/javascript" src="./static/js/sockjs.min.js"></script>
+    <script type="text/javascript" src="./static/js/stomp.min.js"></script>
+    <script type="text/javascript" src="./static/js/qwebchannel.js"></script>
+    <script type="text/javascript" src="./static/js/vip-params.js"></script>
+    <script type="text/javascript" src="./static/js/vip-extends.js"></script>
+</head>
+
+<body style="background: #000431">
+    <audio src="./static/img/welcome.mp3" id="audioHint">
+        您的浏览器不支持 audio
+    </audio>
+    <audio src="./static/img/alarm.mp3" id="audioHintAlarm">
+        您的浏览器不支持 audio
+    </audio>
+    <div class="header-nav">
+        <div class="date-time"></div>
+        <img src="./static/img/view-LOGO.png" class="logo" alt="logo" />
+        <img src="./static/img/dynamicfacerecognitionnon-sensingtemperaturesystem.png" id="nav-title" alt="nav" />
+    </div>
+
+    <div class="container">
+        <div class="left-box">
+            <!-- <div class="video-test-data">
+                <div class="passed-data">
+                    今日通过人次：
+                    <span id="todayIdentifyNumber">[[*{todayIdentifyNumber}]]</span>人
+                </div>
+                <div class="suspect-data">
+                    疑似发热人次：<span id="todayThermalNumber">[[*{todayThermalNumber}]]</span>人
+                </div>
+            </div> -->
+
+            <div class="video-box">
+                <!-- 蒙版 -->
+                <img src="./static/img/video-frame.png" id="mask" alt="video-frame.png" style="width:100%" />
+                <div id="video1"></div>
+                <div id="video_extra"></div>
+            </div>
+
+            <div class="clearfix"></div>
+
+            <div class="user-list">
+                <div class="list-title">
+                    <img src="./static/img/access-records.png" alt="/img/access-records.png" />
+                </div>
+                <ul id="hitresultinline"></ul>
+            </div>
+
+            <!-- 弹框 -->
+            <div class="modal" style="display: none;" id="rectBox"></div>
+        </div>
+        <div class="right-box">
+            <div class="user-box">
+                <div class="temperature-error">
+                    <img src="./static/img/fever-personnel.png" alt="fever-personnel.png" />
+                </div>
+                <ul id="hitresult"></ul>
+                <div class="clearfix"></div>
+            </div>
+        </div>
+        <div class="clearfix"></div>
+    </div>
+
+    <div class="footer">
+        <div class="menu-box">
+            <div class="menu-list">
+                <ul id="device-list"></ul>
+            </div>
+            <div class="clearfix"></div>
+            <img src="./static/img/ic-btn-menu.png" class="menu-btn" alt="摄像机列表" />
+        </div>
+        <img src="./static/img/ic-bottom-title.png" style="text-align: center" class="bot-title" alt="人脸识别技术由北京眼神科技提供" />
+    </div>
+</body>
+<script type="text/javascript">
+    var ctx = "/";
+    var strangerPush = true;
+    var hitPush = true;
+    var alarmTem = "37.0";
+    var imagePreUrl = "/bio/image/show";
+    var stompClient = null;
+    var modal_box_img = "./static/img/model-box.png";
+    var user_kuang = "./static/img/user-kuang.png";
+    var ic_userimg_mask = "./static/img/ic-userimg-mask.png";
+    var modal_box_img_stranger = "./static/img/model-box-stranger.png ";
+    var RTSP_URL = "";
+    var RTSP_URL_EXTRA = "";
+    //缓存当前播放的视频地址，用于控制显示
+    var currentDeviceNo = null;
+    var videoBoxWidth = 0;
+    var updateVideo = function(divName, htmlContent) {
+        var imgarea = document.getElementById(divName);
+        imgarea.innerHTML = htmlContent;
+    };
+
+    function playAudio() {
+        var audioDom = document.getElementById("audioHint");
+        /**currentTime：当前音频/视频的播放位置（以秒计）
+         * duration：当前音频/视频的长度（以秒计)*/
+        var currentTime = audioDom.currentTime
+        var duration = audioDom.duration;
+        /**如果当前音视频未开始播放，或者播放结束，则让它播放*/
+        //if (currentTime <= 0 || currentTime == duration) {
+        /**播放音视频*/
+        audioDom.play();
+        //}
+    }
+
+    function playAudioStranger() {
+        var audioDom = document.getElementById("audioStranger");
+        /**currentTime：当前音频/视频的播放位置（以秒计）
+         * duration：当前音频/视频的长度（以秒计)*/
+        var currentTime = audioDom.currentTime
+        var duration = audioDom.duration;
+        /**如果当前音视频未开始播放，或者播放结束，则让它播放*/
+        //if (currentTime <= 0 || currentTime == duration) {
+        /**播放音视频*/
+        audioDom.play();
+        //}
+    }
+
+    function playAudioAlarm() {
+        var audioAlarmDom = document.getElementById("audioHintAlarm");
+        audioAlarmDom.play();
+
+    }
+
+    function createVideoView() {
+        new QWebChannel(qt.webChannelTransport, function(channel) {
+            window.appObj = channel.objects.appObj;
+            appObj.updateVideo.connect(updateVideo);
+            videoBoxWidth = $("#mask").width() / 2 - 2;
+            var videoW = videoBoxWidth;
+            var videoH = videoBoxWidth / 4 * 3;
+            appObj.setFps(fps);
+            appObj.createVideoView("video1", RTSP_URL, videoW, videoH);
+            appObj.createVideoView("video_extra", RTSP_URL_EXTRA ? RTSP_URL_EXTRA : "rtsp://admin:eyecool2018@192.168.60.84:554/video2", videoW, videoH);
+        });
+    }
+
+    window.onload = function() {
+        listDevices();
+        openSocket();
+    };
+
+    //查询指定设备的识别记录
+    function queryRecogniseRecord(deviceNo) {
+        $("#hitresult").html("");
+        $("#hitresultinline").html("");
+        $("#todayIdentifyNumber").html("");
+        $("#todayThermalNumber").html("");
+        $.ajax({
+            url: location.protocol + '//' + SERVER_IP + ':' + SERVER_PORT + ctx + 'api/show/listresult',
+            type: 'GET',
+            //contentType : 'application/x-www-form-urlencoded',
+            data: {
+                "deviceNo": deviceNo,
+                "showTmpl": false
+            },
+            dataType: 'json',
+            success: function(resMsg) {
+                if (resMsg != null) {
+                    var todayIdentifyNumber = resMsg.todayIdentifyNumber;
+                    var todayThermalNumber = resMsg.todayThermalNumber;
+                    $("#todayIdentifyNumber").html(todayIdentifyNumber);
+                    $("#todayThermalNumber").html(todayThermalNumber);
+                    $("#hitresult").html('');
+                    $("#hitresultinline").html('');
+                    for (var i = resMsg.recogLogAlarmList.length - 1; i >= 0; i--) {
+                        var personName = resMsg.recogLogAlarmList[i].personName ? resMsg.recogLogAlarmList[i].personName : "";
+                        var sceneImage = "data:image/jpeg;base64," + resMsg.recogLogList[i].sceneImage;
+                        var faceTemperature = JSON.parse(resMsg.recogLogAlarmList[i].comment).fCurrTemperature.toFixed(1);
+                        var createTime = resMsg.recogLogAlarmList[i].createTime;
+                        var matchTime = new Date(createTime).Format("HH:mm:ss");
+                        if (faceTemperature >= alarmTem) {
+                            var html = "<li><img src='" + sceneImage + "' class='user-img'>" +
+                                "<img class='userimg-mask' src='" + user_kuang + "'/>" +
+                                "<p>" +
+                                "<span class='username'>" +
+                                (faceTemperature ? faceTemperature : 0) + "℃  " +
+                                personName +
+                                "</span>" +
+                                "<time>" +
+                                matchTime +
+                                "</time>" +
+                                "</p>" +
+                                "</li>";
+                            $("#hitresult").prepend(html);
+                        }
+                    }
+                    for (var i = resMsg.recogLogList.length - 1; i >= 0; i--) {
+                        var personName = resMsg.recogLogList[i].personName ? resMsg.recogLogList[i].personName : "";
+                        var faceTemperature = JSON.parse(resMsg.recogLogList[i].comment).fCurrTemperature.toFixed(1);
+                        var sceneImage = "data:image/jpeg;base64," + resMsg.recogLogList[i].sceneImage;
+                        var createTime = resMsg.recogLogList[i].createTime;
+                        var matchTime = new Date(createTime).Format("HH:mm:ss");
+                        if (faceTemperature >= alarmTem) {
+                            var html_inline =
+                                "<li style='background: #f92a02;'>" +
+                                "<img style='wid 150px; height: 150px;' src='" + sceneImage + "'>" +
+                                "<p>" + (faceTemperature ? faceTemperature : 0) + "℃  " + personName + "</p>" +
+                                "</li>";
+                        } else {
+                            var html_inline =
+                                "<li>" +
+                                "<img style='wid 150px; height: 150px;' src='" + sceneImage + "'>" +
+                                "<p>" + (faceTemperature ? faceTemperature : 0) + "℃  " + personName + "</p>" +
+                                "</li>";
+                        }
+                        $("#hitresultinline").prepend(html_inline);
+                    }
+                }
+            },
+            error: function(response) {
+
+            }
+        });
+    }
+
+    function listDevices() {
+        $.ajax({
+            url: location.protocol + '//' + SERVER_IP + ':' + SERVER_PORT + ctx + 'api/show/listdevice',
+            type: 'GET',
+            contentType: 'application/x-www-form-urlencoded',
+            dataType: 'json',
+            success: function(resMsg) {
+                $("#device-list").html("");
+                for (var i = 0; i < resMsg.length; i++) {
+                    var extInfo = JSON.parse(resMsg[i].extInfo);
+                    var deviceNo = resMsg[i].deviceNo;
+                    var deviceIp = resMsg[i].deviceIp;
+                    var rtspUrl = extInfo.rtspUrl;
+                    var rtspUrlExtra = extInfo.rtspUrlExtra;
+                    var deviceType = resMsg[i].deviceType;
+                    var deviceInfoHtml = "<a href='#' onClick=switchDevice(this,'" +
+                        deviceIp +
+                        "','" +
+                        deviceNo +
+                        "','" +
+                        rtspUrl +
+                        "','" +
+                        rtspUrlExtra +
+                        "','" +
+                        deviceType +
+                        "') ><li>" +
+                        deviceNo +
+                        "</li></a>";
+                    $("#device-list").prepend(deviceInfoHtml);
+                }
+            },
+            error: function(response) {
+
+            }
+        });
+    }
+
+    function switchDevice(obj, deviceIp, serialNo, rtspUrl, rtspUrlExtra, deviceType) {
+        $("#activeFont").attr("id", "");
+        $(obj).find("li").attr("id", "activeFont");
+        var videoW = videoBoxWidth;
+        var videoH = videoBoxWidth / 16 * 9;
+        // $(".user-box").height(videoH);
+        RTSP_URL = rtspUrl;
+        if (rtspUrlExtra && deviceType == '3') {
+            RTSP_URL_EXTRA = rtspUrlExtra
+        } else {
+            RTSP_URL_EXTRA = ''
+        }
+        currentDeviceNo = serialNo;
+        setTimeout(createVideoView, 100);
+        //根据设备好查询识别记录
+        queryRecogniseRecord(serialNo);
+    }
+
+    function openSocket() {
+        if (stompClient == null) {
+            var socket = new SockJS(location.protocol + '//' + SERVER_IP + ':' + SERVER_PORT + ctx + 'websocket?token=kl', null, {
+                // 'transports': ['websocket'],
+                'timeout': 10000
+            });
+            constructStomp(socket);
+        }
+    }
+
+    function constructStomp(socket) {
+        stompClient = Stomp.over(socket);
+        stompClient.connect({
+                token: "kl"
+            },
+            function(frame) {
+                stompClient.subscribe(
+                    '/topic/pullhitresult',
+                    function(event) {
+                        var content = JSON.parse(event.body);
+                        var personFlag = content.personFlag;
+                        var imageBase64 = content.imageBase64;
+                        var matchTime = new Date(content.matchTime).Format("HH:mm:ss");
+                        var serialNo = content.serialNo;
+                        var personName = content.personName;
+                        var personCode = content.personCode;
+                        var imageUrl = content.imageUrl;
+                        var comment = content.comment;
+                        console.log(imageUrl);
+                        var finalUrl = encodeURI(imagePreUrl + "?storeFlag=1&url=" + imageUrl);
+                        if (serialNo === currentDeviceNo) {
+                            var tem = (comment == null ? null : (JSON.parse(comment)['fCurrTemperature'] ? JSON.parse(comment)['fCurrTemperature'].toFixed(1) : null));
+                            if (tem >= alarmTem) {
+                                var html = "<li><img src='/img/user-kuang.png' class='userimg-mask'>" +
+                                    "<img class='user-img' src='data:img/jpeg;base64," + imageBase64 + "' style='wid 132px;height: 132px;'/>" +
+                                    "<p>" +
+                                    "<span class='faceTemperature'>" +
+                                    (tem ? tem : 0) + "℃ " +
+                                    " <a class='username'>" + personName +
+                                    "</a>" +
+                                    "</span>" +
+                                    "<time>" +
+                                    matchTime +
+                                    "</time>" +
+                                    "</p>" +
+                                    "</li>";
+                                $("#hitresult").prepend(html);
+                                if ($("#hitresult li").length > 6) {
+                                    $("#hitresult li:last").remove()
+                                }
+                                $("#todayThermalNumber").html(Number($("#todayThermalNumber").html()) + 1);
+                                playAudioAlarm();
+                            }
+                            var html_inline =
+                                "<li " + (tem >= alarmTem ? "style='background: #f92a02;'>" : ">") +
+                                "<img style='wid 150px; height: 150px;' src='data:img/jpeg;base64," + imageBase64 + "'>" +
+                                "<div><p><span>" + (tem ? tem : 0) + "℃ </span><span>" + (personName ? personName : '') + "</span></p></div>" +
+                                "</li>";
+                            $("#hitresultinline").prepend(html_inline);
+                            if ($("#hitresultinline li").length > 5) {
+                                $("#hitresultinline li:last").remove()
+                            }
+                            $("#todayIdentifyNumber").html(Number($("#todayIdentifyNumber").html()) + 1);
+
+                            if (personFlag == 'hit') {
+                                var tanchuangHtml = " <div class='model-box'>" +
+                                    "<img width='220' height='220' src='data:img/jpeg;base64," + imageBase64 + "' width='256' height='256'>" +
+                                    "<p class='username'>" +
+                                    personName +
+                                    "</p>" +
+                                    "<span class='face_temperature'>" +
+                                    (tem ? tem : 0) + "℃ " +
+                                    "</span>" +
+                                    "<date>" +
+                                    matchTime +
+                                    "</date>" +
+                                    "</div>";
+                                openModal(tanchuangHtml);
+                                if (OPEN_AUDIO) {
+                                    playAudio();
+                                }
+                            }
+                        }
+                    }, {
+                        token: "kltoen"
+                    });
+                stompClient.subscribe(
+                    '/topic/pullstrangerresult',
+                    function(event) {
+                        var content = JSON.parse(event.body);
+                        var serialNo = content.serialNo;
+                        var imageBase64 = content.imageBase64;
+                        var captureTime = content.matchTime;
+                        var comment = content.comment;
+                        var tem = (comment == null ? null : (JSON.parse(comment)['fCurrTemperature'] ? JSON.parse(comment)['fCurrTemperature'].toFixed(1) : null));
+                        if (serialNo === currentDeviceNo) {
+                            if (tem >= alarmTem) {
+                                var html = "<li><img src='data:img/jpeg;base64," + imageBase64 + "' class='user-img'>" +
+                                    "<img class='userimg-mask' src='/img/user-kuang.png'/>" +
+                                    "<p>" +
+                                    "<span class='face_temperature'>" +
+                                    tem +
+                                    "</span>" +
+                                    "<time>" +
+                                    captureTime +
+                                    "</time>" +
+                                    "</p></li>";
+                                $("#hitresult").prepend(html);
+                                if ($("#hitresult li").length > 6) {
+                                    $("#hitresult li:last").remove()
+                                }
+                                $("#todayThermalNumber").html(Number($("#todayThermalNumber").html()) + 1);
+                                playAudioAlarm();
+                            }
+                            var html_inline =
+                                "<li " + (tem >= alarmTem ? "style='background: #f92a02;'>" : ">") +
+                                "<img style='wid 150px; height: 150px;' src='data:img/jpeg;base64," + imageBase64 + "'>" +
+                                "<div><p><span>" + (tem ? tem : 0) + "℃ </span></p></div>" +
+                                "</li>";
+                            $("#hitresultinline").prepend(html_inline);
+                            if ($("#hitresultinline li").length > 5) {
+                                $("#hitresultinline li:last").remove()
+                            }
+                            $("#todayIdentifyNumber").html(Number($("#todayIdentifyNumber").html()) + 1);
+                        }
+                    }, {
+                        token: "kltoen"
+                    });
+            },
+            function(error) {
+                var socket = new SockJS(location.protocol + '//' + SERVER_IP + ':' + SERVER_PORT + '/websocket?token=kl', null, {
+                    // 'transports': ['websocket'],
+                    'timeout': 10000
+                });
+                // constructStomp(socket);
+            });
+    }
+    var openTTS = false;
+    var openModalSetTimeOut = null;
+    var openModal = function(html) {
+        if (openModalSetTimeOut != null) {
+            clearTimeout(openModalSetTimeOut);
+            openModalSetTimeOut = null;
+        }
+        console.log("openModalSetTimeOut is null >  " + (openModalSetTimeOut == null));
+        if (html != null && openModalSetTimeOut == null) {
+            $("#rectBox").html("");
+            $("#rectBox").prepend(html);
+            $("#rectBox").css("display", "block");
+            openModalSetTimeOut = setTimeout(function() {
+                $("#rectBox ").css("display", "none");
+                openModalSetTimeOut = null;
+            }, 3000);
+        }
+    }
+
+    function closeSocket() {
+        if (stompClient != null) {
+            stompClient.disconnect();
+            stompClient = null;
+        }
+    }
+
+    //10分钟刷一次设备列表
+    window.setInterval(listDevices, 10 * 60 * 1000);
+
+    //定时关闭弹窗 3s
+    function delayCloseTanChuang() {}
+</script>
+
+</html>
