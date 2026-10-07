@@ -68,11 +68,11 @@
           <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
         </el-row>
 
-        <el-table v-loading="loading" border :data="infoList" @selection-change="handleSelectionChange">
-          <el-table-column type="selection" width="55" align="center" />
+        <el-table v-loading="loading" border :data="infoList" @selection-change="handleSelectionChange" @sort-change="sortChange">
+          <el-table-column type="selection" width="55" align="center"/>
           <el-table-column label="设备编号" align="center" prop="deviceNo" show-overflow-tooltip />
-          <el-table-column label="设备名称" align="center" prop="deviceName" />
-          <el-table-column label="型号编码" align="center" prop="deviceModelCode" width="120" />
+          <el-table-column label="设备名称" align="center" prop="deviceName"width="100" sortable="custom"/>
+          <el-table-column label="型号编码" align="center" prop="deviceModelCode" width="100" />
           <el-table-column label="场景编码" align="center" prop="channelCode" />
           <el-table-column label="设备类型" align="center" prop="deviceType" :formatter="deviceTypeFormat" />
           <el-table-column label="设备方向" align="center" prop="deviceDirection" :formatter="deviceDirectionFormat" />
@@ -82,7 +82,9 @@
             </template>
           </el-table-column>
           <el-table-column label="租户ID" align="center" prop="tenantId" v-if="tenantEnabled && !isTenantUser" />
-          <el-table-column label="创建时间" align="center" prop="createTime" width="160" />
+<!--          <el-table-column label="创建时间" align="center" prop="createTime" width="160" />-->
+          <el-table-column label="server1数量" align="center" prop="countServer1"/>
+          <el-table-column label="server2数量" align="center" prop="countServer2"/>
           <el-table-column label="修改时间" align="center" prop="updateTime" width="160" />
           <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="100">
             <template slot-scope="scope">
@@ -95,7 +97,7 @@
 
         <!-- 添加或修改设备信息对话框 -->
         <el-dialog :title="title" :visible.sync="open" width="800px" append-to-body :close-on-click-modal="false">
-          <el-form ref="form" :model="form" :rules="rules" label-width="90px" :disabled="isShowDetailDialog">
+          <el-form ref="form" :model="form" :rules="rules" label-width="100px" :disabled="isShowDetailDialog">
             <el-row :gutter="20">
               <el-col :span="12">
                 <el-form-item label="设备编号" prop="deviceNo">
@@ -172,6 +174,18 @@
               <el-col :span="12">
                 <el-form-item label="设备Mac" prop="deviceMac">
                   <el-input v-model="form.deviceMac" placeholder="请输入设备Mac" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="Server1数量" prop="countServer1">
+                  <el-input v-model="form.countServer1" placeholder="请输入countServer1" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="Server2数量" prop="countServer2">
+                  <el-input v-model="form.countServer2" placeholder="请输入countServer2" />
                 </el-form-item>
               </el-col>
             </el-row>
@@ -331,7 +345,7 @@ export default {
       ids: [],
       // 设备名称
       deviceName: "",
-      // 选中数据的租户列表 
+      // 选中数据的租户列表
       tenantIds: [],
       // 非单个禁用
       single: true,
@@ -607,7 +621,7 @@ export default {
           return this.subtreasurySelectOptions;
         })
         return res;
-        } 
+        }
       }
       return '';
     },
@@ -836,7 +850,13 @@ export default {
       this.upload.tenantId = null;
       this.upload.batchDesc = null;
       this.resetForm("uploadForm");
-    }
+    },
+    // 排序触发
+    sortChange(column) {
+      this.queryParams.orderByColumn = column.prop;
+      this.queryParams.isAsc = column.order === 'ascending' ? 'asc' : 'desc';
+      this.getList(); // 重新请求后端接口
+    },
   }
 };
 </script>

@@ -62,11 +62,24 @@
       <el-table-column label="请求时间" align="center" prop="receivedTime" width="180" />
       <el-table-column label="耗时(ms)" align="center" prop="timeUsed" />
       <el-table-column label="设备编码" align="center" prop="deviceCode" />
-      <el-table-column label="温度(℃)" align="center" prop="temperature" />
+<!--      <el-table-column label="温度(℃)" align="center" prop="temperature" />-->
+      <el-table-column label="设备名称" align="center" prop="deviceName" />
+      <el-table-column label="推送" align="center" prop="toPolice">
+        <template slot-scope="scope">
+          <div>{{handleShowToPolice(scope.row.toPolice)}}</div>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="120">
         <template slot-scope="scope">
           <el-button size="mini" type="text" icon="el-icon-info" @click="handleShowDetail(scope.row)" v-hasPermi="['tradelog:facesearch:query']">详情</el-button>
-          <el-button size="mini" type="text" icon="el-icon-message-solid" @click="handleShowHealthlog(scope.row)">健康码</el-button>
+<!--          <el-button size="mini" type="text" icon="el-icon-message-solid" @click="handleShowHealthlog(scope.row)">健康码</el-button>-->
+          <el-button
+            size="mini"
+            type="text"
+            icon="el-icon-send"
+            @click="handlePush(scope.row)"
+            v-if="scope.row.toPolice === 'N'"
+          >推送</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -281,7 +294,7 @@
 </template>
 
 <script>
-import { listFacesearch, getFacesearch, exportFacesearch } from "@/api/tradelog/facesearch";
+import { listFacesearch, getFacesearch, exportFacesearch,pushToPolice } from "@/api/tradelog/facesearch";
 import { asynctaskResult } from "@/api/common/asynctask";
 import hasLoading from '@/utils/loading.js'
 import Treeselect from "@riophae/vue-treeselect";
@@ -345,7 +358,9 @@ export default {
       form: {},
       // 导出选择框
       exportTipVisible: false,
-      exportLatestOnly: true
+      exportLatestOnly: true,
+      // 推送字典
+      toPoliceOptions: [],
     };
   },
   created () {
@@ -364,6 +379,9 @@ export default {
     });
     this.getDicts("device_direction").then(response => {
       this.deviceDirectionOptions = response.data;
+    });
+    this.getDicts("to_police").then(response => {
+      this.toPoliceOptions = response.data;
     });
     this.getTreeselect();
   },
@@ -517,6 +535,24 @@ export default {
         return
       }
       this.$router.push({ name: 'Healthcode', query: { healthcodeLogId: row.healthcodeLogId } })
+    },
+    /** 推送显示转换 */
+    handleShowToPolice (val) {
+      return this.selectDictLabel(this.toPoliceOptions, val);
+    },
+    handlePush(row){
+      this.$confirm('确认推送这条记录？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        pushToPolice(row.id).then(() => {
+          this.$modal.msgSuccess("推送成功");
+          this.getList(); // 刷新列表
+        }).catch((err) => {
+          console.log(err);
+        });
+      });
     }
   }
 };

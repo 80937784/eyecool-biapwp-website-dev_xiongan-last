@@ -26,3 +26,10 @@ export function exportFacesearch(query) {
     timeout:0
   })
 }
+// t推送数据到公安
+export function pushToPolice(id) {
+  return request({
+    url: '/tradelog/facesearch/pushToPolice?id=' + id,
+    method: 'get'
+  })
+}
