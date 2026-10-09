@@ -196,9 +196,23 @@
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="设备纬度" prop="latitude">
+                <el-form-item label="设备纬度" prop="longitude">
                   <el-input type="number" v-model="form.latitude" placeholder="请输入设备纬度" :controls="false" class="ec-form-select" />
                 </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="是否上传设备">
+                  <el-radio-group v-model="form.isUpload">
+                    <el-radio v-for="dict in isUploadOptions" :key="dict.dictValue" :label="dict.dictValue">{{dict.dictLabel}}</el-radio>
+                  </el-radio-group>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                  <el-form-item label="apeId" prop="apeId">
+                    <el-input v-model="form.apeId" placeholder="请输入apeId" />
+                  </el-form-item>
               </el-col>
             </el-row>
             <el-row :gutter="20">
@@ -394,12 +408,12 @@ export default {
         deviceModelCode: [
           { required: true, message: "设备型号不能为空", trigger: "change" }
         ],
-        longitude: [
-          { pattern: /^([0-9]|[1-8]\d|90)$/, message: "设备经度必须在0-90之间" }
-        ],
-        latitude: [
-          { pattern: /^([0-9]|[1-8]\d|90)$/, message: "设备纬度必须在0-90之间" }
-        ],
+        // longitude: [
+        //   { pattern: /^([0-9]|[1-8]\d|90)$/, message: "设备经度必须在0-90之间" }
+        // ],
+        // latitude: [
+        //   { pattern: /^([0-9]|[1-8]\d|90)$/, message: "设备纬度必须在0-90之间" }
+        // ],
       },
       // 场景列表
       channelSelectOptions: [],
@@ -411,6 +425,8 @@ export default {
       deviceOnlineStateOptions: [],
       // 设备方向
       deviceDirectionOptions: [],
+      //是否推送设备
+      isUploadOptions: [],
       // 区域树选项
       areaOptions: null,
       // 区域名称
@@ -510,6 +526,9 @@ export default {
     });
     this.getDicts("device_direction").then(response => {
       this.deviceDirectionOptions = response.data;
+    });
+    this.getDicts("sys_yes_no").then(response => {
+      this.isUploadOptions = response.data;
     });
   },
   methods: {
